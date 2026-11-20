@@ -333,16 +333,41 @@ a:focus-visible,
   background: var(--amber-warn);
 }
 
-/* 2. Expanded Banknote-Proportioned Camera Viewfinder */
+/* 2. Banknote-Shaped Camera Viewfinder
+   The frame keeps a fixed bill-like aspect ratio (Philippine bills are
+   about 160 x 66 mm = 2.42:1) and is centered in its grid cell, so only
+   the paper and a small margin are visible and scanned.
+   Change --frame-ratio to reshape the frame (e.g. 0.42 for portrait). */
+.camera-zone {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;           /* enables cqw / cqh units below */
+}
+
 .camera-stage {
+  --frame-ratio: 2.4;
   position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 200px;
+  width: 100%;                    /* fallback if container units are missing */
+  width: min(100cqw, calc(100cqh * var(--frame-ratio)));
+  aspect-ratio: var(--frame-ratio);
+  max-height: 100%;
   border: 4px solid var(--blue-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: #000000;
+}
+
+/* Dashed guide: place the paper inside it, leaving a small margin */
+.camera-stage::after {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  border: 3px dashed rgba(255, 214, 10, 0.85);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 3;
 }
 
 #camera,
@@ -353,8 +378,10 @@ a:focus-visible,
   height: 100%;
 }
 
+/* cover + centered: the visible area is exactly the area sent to the model */
 #camera {
   object-fit: cover;
+  object-position: center;
 }
 
 #overlayCanvas {
@@ -449,7 +476,7 @@ a:focus-visible,
       "camera actions";
   }
 
-  .camera-stage { grid-area: camera; min-height: 0; }
+  .camera-zone  { grid-area: camera; }
   .result-panel { grid-area: result; }
   .action-deck  { grid-area: actions; grid-template-columns: 1fr 1fr; }
 

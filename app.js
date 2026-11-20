@@ -132,18 +132,12 @@ function drawOrientedBox(obb, labelText) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const videoW = elements.camera.videoWidth || modelInputWidth;
-  const videoH = elements.camera.videoHeight || modelInputHeight;
-  const coverScale = Math.max(canvas.width / videoW, canvas.height / videoH);
-  const renderedW = videoW * coverScale;
-  const renderedH = videoH * coverScale;
-  const offsetX = (canvas.width - renderedW) / 2;
-  const offsetY = (canvas.height - renderedH) / 2;
-
-  let cx = offsetX + obb.cx * renderedW;
-  const cy = offsetY + obb.cy * renderedH;
-  const boxW = Math.max(16, obb.w * renderedW);
-  const boxH = Math.max(16, obb.h * renderedH);
+  // The model only sees the visible (cropped) frame, so detection
+  // coordinates are relative to the canvas itself.
+  let cx = obb.cx * canvas.width;
+  const cy = obb.cy * canvas.height;
+  const boxW = Math.max(16, obb.w * canvas.width);
+  const boxH = Math.max(16, obb.h * canvas.height);
   let angle = obb.angle || 0;
 
   if (elements.camera.style.transform === "scaleX(-1)") {
@@ -320,6 +314,22 @@ async function switchCamera() {
   speak("Camera switched.");
 }
 
+/* Region of the camera image that is actually visible inside the bill-shaped
+   frame (video uses object-fit: cover, centered). Only this region is scanned,
+   so the background outside the frame is ignored. */
+function getVisibleCrop() {
+  const video = elements.camera;
+  const vw = video.videoWidth || modelInputWidth;
+  const vh = video.videoHeight || modelInputHeight;
+  const rect = video.getBoundingClientRect();
+  if (!rect.width || !rect.height) return { sx: 0, sy: 0, sw: vw, sh: vh };
+
+  const scale = Math.max(rect.width / vw, rect.height / vh);
+  const sw = Math.min(vw, rect.width / scale);
+  const sh = Math.min(vh, rect.height / scale);
+  return { sx: (vw - sw) / 2, sy: (vh - sh) / 2, sw, sh };
+}
+
 function drawFrameTensor() {
   const targetW = modelInputWidth;
   const targetH = modelInputHeight;
@@ -332,15 +342,14 @@ function drawFrameTensor() {
   context.fillStyle = "rgb(114, 114, 114)";
   context.fillRect(0, 0, targetW, targetH);
 
-  const sourceWidth = elements.camera.videoWidth || targetW;
-  const sourceHeight = elements.camera.videoHeight || targetH;
-  const scale = Math.min(targetW / sourceWidth, targetH / sourceHeight);
-  const width = sourceWidth * scale;
-  const height = sourceHeight * scale;
+  const { sx, sy, sw, sh } = getVisibleCrop();
+  const scale = Math.min(targetW / sw, targetH / sh);
+  const width = sw * scale;
+  const height = sh * scale;
   const left = (targetW - width) / 2;
   const top = (targetH - height) / 2;
 
-  context.drawImage(elements.camera, left, top, width, height);
+  context.drawImage(elements.camera, sx, sy, sw, sh, left, top, width, height);
 
   const pixels = context.getImageData(0, 0, targetW, targetH).data;
   const planeSize = targetW * targetH;
@@ -796,6 +805,7 @@ if ("serial" in navigator) {
   elements.arduino.hidden = false;
 }
 updateUtilityLayout();
+window.addEventListener("resize", clearBoundingBox);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

@@ -74,14 +74,16 @@
     </section>
 
     <!-- 2. Compact Guided Camera Preview -->
-    <section class="camera-stage" aria-label="Camera viewfinder">
-      <video id="camera" autoplay playsinline muted aria-label="Live camera preview"></video>
-      <canvas id="overlayCanvas" aria-hidden="true"></canvas>
-      <p class="sr-only">
-        Point the back camera at the banknote so it fills the frame, then press
-        Scan Money or the spacebar to identify the bill.
-      </p>
-    </section>
+    <div class="camera-zone">
+      <section class="camera-stage" aria-label="Camera viewfinder">
+        <video id="camera" autoplay playsinline muted aria-label="Live camera preview"></video>
+        <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+        <p class="sr-only">
+          Point the back camera at the banknote so it fills the frame, then press
+          Scan Money or the spacebar to identify the bill.
+        </p>
+      </section>
+    </div>
 
     <!-- 3. Oversized Edge-to-Edge Touch Buttons -->
     <section class="action-deck" aria-label="Primary actions">
