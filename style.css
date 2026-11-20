@@ -1,0 +1,558 @@
+/* =========================================================
+   ₱1,000 Accessible Money Identifier — style.css
+   High-contrast, large-target, screen-reader-first styling.
+   ========================================================= */
+
+:root {
+  /* ₱1,000 Polymer Banknote High-Contrast Palette */
+  --bg-deep: #05122b;
+  --blue-royal: #0d3888;
+  --blue-panel: #092252;
+  --blue-border: #60a5fa;
+  --gold-vivid: #ffd60a;
+  --green-ok: #10b981;
+  --amber-warn: #fbbf24;
+  --white: #ffffff;
+
+  /* Accessibility tokens */
+  --focus-ring: #ffffff;
+  --tap-min: 56px;
+  --radius-lg: 18px;
+  --space: 10px;
+  --font-stack: "Atkinson Hyperlegible", Verdana, Tahoma, Arial, sans-serif;
+}
+
+/* ---------- Reset & base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--white);
+  font-family: var(--font-stack);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ---------- Buttons ---------- */
+button {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 14px;
+  letter-spacing: 0.03em;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:active {
+  transform: scale(0.985);
+}
+
+/* Two-tone focus ring: visible on BOTH dark navy and gold surfaces */
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 5px solid var(--bg-deep);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 10px var(--focus-ring);
+}
+
+/* ---------- Screen-reader-only utility ---------- */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Skip link ---------- */
+.skip-link {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -140%);
+  padding: 14px 26px;
+  background: var(--gold-vivid);
+  color: var(--bg-deep);
+  border: 4px solid var(--white);
+  border-radius: 0 0 14px 14px;
+  font-size: 1.15rem;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translate(-50%, 0);
+}
+
+/* ---------- No-JS warning ---------- */
+.noscript-warning {
+  position: fixed;
+  z-index: 300;
+  inset: 0 0 auto 0;
+  margin: 0;
+  padding: 18px;
+  background: var(--amber-warn);
+  color: #1a1200;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+/* ---------- Full-Screen Start Overlay ---------- */
+.start-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+           max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  display: grid;
+  background: var(--bg-deep);
+}
+
+.start-overlay[hidden] {
+  display: none;
+}
+
+.start-overlay button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  background: var(--blue-royal);
+  border: 6px solid var(--gold-vivid);
+  border-radius: 20px;
+  color: var(--white);
+  text-align: center;
+}
+
+.banknote-tag {
+  padding: 10px 20px;
+  border: 3px solid var(--gold-vivid);
+  border-radius: 999px;
+  background: var(--bg-deep);
+  color: var(--gold-vivid);
+  font-size: clamp(1.05rem, 2.5vw, 1.45rem);
+  line-height: 1.25;
+}
+
+.start-title {
+  font-size: clamp(2.4rem, 8vw, 5.5rem);
+  line-height: 1.08;
+  color: var(--white);
+}
+
+.start-sub {
+  font-size: clamp(1.25rem, 3.2vw, 1.9rem);
+  color: var(--gold-vivid);
+  line-height: 1.3;
+}
+
+/* ---------- Large Top Controls ---------- */
+.utility-bar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+  min-height: calc(64px + env(safe-area-inset-top, 0px));
+  padding: calc(6px + env(safe-area-inset-top, 0px))
+           max(12px, env(safe-area-inset-right))
+           6px
+           max(12px, env(safe-area-inset-left));
+  background: var(--blue-panel);
+  border-bottom: 3px solid var(--blue-border);
+}
+
+.utility-button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 6px 10px;
+  background: var(--bg-deep);
+  border: 3px solid var(--white);
+  color: var(--white);
+  font-size: clamp(0.9rem, 2.4vw, 1.3rem);
+  line-height: 1.15;
+  /* Wrap instead of truncating — never hide a label from low-vision users */
+  white-space: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.utility-button[aria-pressed="true"] {
+  background: var(--gold-vivid);
+  border-color: var(--gold-vivid);
+  color: var(--bg-deep);
+}
+
+.utility-button[hidden] {
+  display: none;
+}
+
+/* ---------- Main 3-Section Accessible Layout ---------- */
+.workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(200px, 1fr) minmax(150px, 26dvh);
+  gap: var(--space);
+  padding: var(--space)
+           max(12px, env(safe-area-inset-right))
+           max(var(--space), env(safe-area-inset-bottom))
+           max(12px, env(safe-area-inset-left));
+  background: var(--bg-deep);
+}
+
+.workspace:focus {
+  outline: none;
+}
+
+/* 1. Compact High-Contrast Result Banner */
+.result-panel {
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--blue-panel);
+  border: 4px solid var(--blue-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.result-panel[data-state="success"] {
+  background: var(--blue-royal);
+  border-color: var(--gold-vivid);
+}
+
+.result-panel[data-state="warn"] {
+  border-color: var(--amber-warn);
+}
+
+.status-badge {
+  margin: 0;
+  padding: 4px 14px;
+  border-radius: 8px;
+  background: var(--bg-deep);
+  border: 2px solid var(--blue-border);
+  color: var(--white);
+  font-size: clamp(0.95rem, 2vw, 1.15rem);
+  line-height: 1.25;
+}
+
+.result-panel[data-state="success"] .status-badge {
+  border-color: var(--gold-vivid);
+  color: var(--gold-vivid);
+}
+
+.result-panel[data-state="warn"] .status-badge {
+  border-color: var(--amber-warn);
+  color: var(--amber-warn);
+}
+
+.denomination-title {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(1.9rem, 5.5vw, 3.6rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.result-panel[data-state="success"] .denomination-title {
+  color: var(--gold-vivid);
+}
+
+.confidence-text {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(1.1rem, 2.8vw, 1.65rem);
+  line-height: 1.2;
+}
+
+.confidence-track {
+  width: 100%;
+  max-width: 680px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--bg-deep);
+  border: 2px solid var(--white);
+  overflow: hidden;
+}
+
+.confidence-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--blue-border);
+  transition: width 0.25s ease;
+}
+
+.result-panel[data-state="success"] .confidence-fill {
+  background: var(--green-ok);
+}
+
+.result-panel[data-state="warn"] .confidence-fill {
+  background: var(--amber-warn);
+}
+
+/* 2. Expanded Banknote-Proportioned Camera Viewfinder */
+.camera-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border: 4px solid var(--blue-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000000;
+}
+
+#camera,
+#overlayCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#camera {
+  object-fit: cover;
+}
+
+#overlayCanvas {
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 3. Giant Edge-to-Edge Touch Buttons */
+.action-deck {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.scan-button,
+.repeat-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  min-height: var(--tap-min);
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.scan-button {
+  background: var(--gold-vivid);
+  border: 5px solid var(--white);
+  color: var(--bg-deep);
+}
+
+.repeat-button {
+  background: var(--blue-royal);
+  border: 5px solid var(--white);
+  color: var(--white);
+}
+
+.btn-main {
+  font-size: clamp(1.6rem, 4.2vw, 2.8rem);
+  line-height: 1.05;
+}
+
+.btn-sub {
+  font-size: clamp(0.95rem, 2vw, 1.25rem);
+  opacity: 0.92;
+  line-height: 1.2;
+}
+
+/* ---------- Narrow phones ---------- */
+@media (max-width: 640px) {
+  .workspace {
+    grid-template-rows: auto minmax(190px, 1fr) minmax(165px, 30dvh);
+  }
+
+  .action-deck {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1.2fr 1fr;
+  }
+}
+
+/* ---------- Short viewports (small phones in portrait) ---------- */
+@media (max-height: 680px) {
+  :root {
+    --space: 8px;
+  }
+
+  .denomination-title {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+  }
+
+  .btn-main {
+    font-size: clamp(1.3rem, 4vw, 1.9rem);
+  }
+
+  .workspace {
+    grid-template-rows: auto minmax(150px, 1fr) minmax(130px, 26dvh);
+  }
+}
+
+/* ---------- Landscape phones: side-by-side layout ---------- */
+@media (orientation: landscape) and (max-height: 600px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "camera result"
+      "camera actions";
+  }
+
+  .camera-stage { grid-area: camera; min-height: 0; }
+  .result-panel { grid-area: result; }
+  .action-deck  { grid-area: actions; grid-template-columns: 1fr 1fr; }
+
+  .denomination-title {
+    font-size: clamp(1.3rem, 3.6vw, 2rem);
+  }
+
+  .btn-main {
+    font-size: clamp(0.95rem, 2.4vw, 1.4rem);
+  }
+
+  .btn-sub {
+    font-size: clamp(0.7rem, 1.6vw, 0.95rem);
+  }
+
+  .utility-bar {
+    min-height: calc(52px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  button:active {
+    transform: none;
+  }
+
+  .skip-link {
+    transition: none;
+  }
+}
+
+/* ---------- High contrast preference ---------- */
+@media (prefers-contrast: more) {
+  :root {
+    --bg-deep: #000000;
+    --blue-panel: #000000;
+    --blue-royal: #001f5c;
+    --blue-border: #ffffff;
+  }
+
+  .result-panel,
+  .camera-stage,
+  .utility-button,
+  .scan-button,
+  .repeat-button,
+  .start-overlay button {
+    border-width: 5px;
+  }
+
+  .status-badge {
+    border-width: 3px;
+  }
+
+  .confidence-track {
+    border-width: 3px;
+    height: 16px;
+  }
+}
+
+/* ---------- Windows High Contrast / forced colors ---------- */
+@media (forced-colors: active) {
+  button,
+  .result-panel,
+  .camera-stage,
+  .confidence-track {
+    border: 3px solid CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .scan-button,
+  .repeat-button,
+  .utility-button,
+  .start-overlay button {
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .utility-button[aria-pressed="true"] {
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+
+  .confidence-fill {
+    background: Highlight;
+  }
+
+  .result-panel[data-state="success"] .denomination-title,
+  .result-panel[data-state="warn"] .status-badge {
+    color: CanvasText;
+  }
+
+  .skip-link {
+    background: Highlight;
+    color: HighlightText;
+  }
+}

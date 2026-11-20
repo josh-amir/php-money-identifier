@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05122b">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Accessible Philippine money identifier. Point your camera at a banknote and hear the denomination read aloud.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Money ID">
+  <title>₱1000 Accessible Money Identifier</title>
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Keyboard shortcut to jump straight to the controls -->
+  <a class="skip-link" href="#mainScreen">Skip to scan controls</a>
+
+  <!-- One and only <h1> for screen-reader orientation -->
+  <h1 class="sr-only">Accessible Philippine Peso Money Identifier</h1>
+
+  <noscript>
+    <p class="noscript-warning">
+      This app needs JavaScript and camera access to identify money.
+      Please turn on JavaScript and reload the page.
+    </p>
+  </noscript>
+
+  <!-- Full-Screen Start Trigger -->
+  <div id="startOverlay" class="start-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="startTitle" aria-describedby="startSub">
+    <button id="startButton" class="start-button" type="button" autofocus
+            aria-label="Tap anywhere to start the money identifier. Philippine currency reader for the one thousand peso banknote. Voice guidance and the camera will turn on.">
+      <span class="banknote-tag">PHILIPPINE CURRENCY READER • ₱1000</span>
+      <span id="startTitle" class="start-title">TAP ANYWHERE TO START</span>
+      <span id="startSub" class="start-sub">Voice guidance and camera will turn on</span>
+    </button>
+  </div>
+
+  <!-- Large Top Controls -->
+  <header class="utility-bar" aria-label="System controls">
+    <button id="autoScanButton" class="utility-button" type="button"
+            aria-pressed="false" aria-label="Auto-scan off">
+      AUTO-SCAN: OFF
+    </button>
+    <button id="switchCameraButton" class="utility-button" type="button"
+            aria-label="Switch camera" hidden>
+      SWITCH CAMERA
+    </button>
+    <button id="arduinoButton" class="utility-button" type="button"
+            aria-label="Connect Arduino" hidden>
+      CONNECT ARDUINO
+    </button>
+  </header>
+
+  <!-- Accessible 3-Row Layout: Result Hero -> Camera -> Giant Touch Buttons -->
+  <main id="mainScreen" class="workspace" tabindex="-1"
+        aria-label="Money identification controls">
+    <!-- 1. Giant Centered Result & Confidence Readout -->
+    <section id="resultPanel" class="result-panel" data-state="idle" aria-label="Scan result">
+      <p id="statusBadge" class="status-badge" role="status">READY TO SCAN</p>
+      <p id="denomination" class="denomination-title" role="alert" aria-atomic="true">TAP SCAN MONEY</p>
+      <p id="confidence" class="confidence-text">CONFIDENCE: --</p>
+      <div class="confidence-track" aria-hidden="true">
+        <div id="confidenceFill" class="confidence-fill"></div>
+      </div>
+    </section>
+
+    <!-- 2. Compact Guided Camera Preview -->
+    <section class="camera-stage" aria-label="Camera viewfinder">
+      <video id="camera" autoplay playsinline muted aria-label="Live camera preview"></video>
+      <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+      <p class="sr-only">
+        Point the back camera at the banknote so it fills the frame, then press
+        Scan Money or the spacebar to identify the bill.
+      </p>
+    </section>
+
+    <!-- 3. Oversized Edge-to-Edge Touch Buttons -->
+    <section class="action-deck" aria-label="Primary actions">
+      <button id="scanButton" class="scan-button" type="button"
+              aria-keyshortcuts="Space" aria-label="Scan money. Shortcut: Spacebar">
+        <span class="btn-main">SCAN MONEY</span>
+        <span class="btn-sub">SPACEBAR</span>
+      </button>
+      <button id="repeatButton" class="repeat-button" type="button"
+              aria-keyshortcuts="R" aria-label="Repeat last result. Shortcut: R">
+        <span class="btn-main">REPEAT AUDIO</span>
+        <span class="btn-sub">PRESS R</span>
+      </button>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
