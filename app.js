@@ -3,6 +3,7 @@
 const MODEL_PATH = "model/best.onnx";
 const LABELS_PATH = "model/labels.json";
 const SPEECH_PATH = "model/speech.json";
+const CONFIDENCE_THRESHOLD = 45;
 
 const elements = {
   overlay: document.getElementById("startOverlay"),
@@ -142,18 +143,11 @@ function drawOrientedBox(obb, labelText) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // The model only sees the visible (cropped) frame, so detection
-  // coordinates are relative to the canvas itself.
-  let cx = obb.cx * canvas.width;
+  const cx = obb.cx * canvas.width;
   const cy = obb.cy * canvas.height;
   const boxW = Math.max(16, obb.w * canvas.width);
   const boxH = Math.max(16, obb.h * canvas.height);
-  let angle = obb.angle || 0;
-
-  if (elements.camera.style.transform === "scaleX(-1)") {
-    cx = canvas.width - cx;
-    angle = -angle;
-  }
+  const angle = obb.angle || 0;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -205,6 +199,21 @@ function normalizeLabels(raw) {
   return entries.map(([, v]) => String(v));
 }
 
+/* Extracts Ultralytics embedded class names directly from the ONNX binary metadata */
+function extractEmbeddedOnnxNames(arrayBuffer) {
+  try {
+    const text = new TextDecoder("latin1").decode(new Uint8Array(arrayBuffer));
+    const match = text.match(/names\x12[\s\S]{1,4}(\{[^}]+\})/);
+    if (!match) return null;
+    const jsonLike = match[1].replace(/'/g, '"').replace(/(\d+)\s*:/g, '"$1":');
+    const parsed = JSON.parse(jsonLike);
+    const list = normalizeLabels(parsed);
+    return list.length > 0 ? list : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function loadJson(path) {
   const response = await fetch(`${path}?v=${Date.now()}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Unable to load ${path}`);
@@ -220,7 +229,16 @@ async function initializeModel() {
   ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
   ort.env.wasm.numThreads = 1;
 
-  session = await ort.InferenceSession.create(MODEL_PATH, {
+  const modelResponse = await fetch(`${MODEL_PATH}?v=${Date.now()}`, { cache: "no-store" });
+  if (!modelResponse.ok) throw new Error(`Unable to load ${MODEL_PATH}`);
+  const modelBuffer = await modelResponse.arrayBuffer();
+
+  const embeddedNames = extractEmbeddedOnnxNames(modelBuffer);
+  if (embeddedNames) {
+    labelList = embeddedNames;
+  }
+
+  session = await ort.InferenceSession.create(modelBuffer, {
     executionProviders: ["wasm"],
     graphOptimizationLevel: "all"
   });
@@ -236,6 +254,15 @@ async function initializeModel() {
       modelInputWidth = w;
     }
   }
+
+  console.log("Model loaded:", {
+    modelPath: MODEL_PATH,
+    embeddedNamesUsed: Boolean(embeddedNames),
+    inputTensorName,
+    inputSize: `${modelInputWidth}x${modelInputHeight}`,
+    outputNames: session.outputNames,
+    labelList
+  });
 
   if (cameraStream) {
     updateResultUI({
@@ -256,10 +283,7 @@ async function refreshCameras() {
   updateUtilityLayout();
 }
 
-function updateUtilityLayout() {
-  // Layout is controlled by responsive CSS so the app brand is preserved
-  // alongside any optional utility buttons.
-}
+function updateUtilityLayout() {}
 
 async function startCamera(deviceId) {
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -332,9 +356,6 @@ async function switchCamera() {
   speak("Camera switched.");
 }
 
-/* Region of the camera image that is actually visible inside the bill-shaped
-   frame (video uses object-fit: cover, centered). Only this region is scanned,
-   so the background outside the frame is ignored. */
 function getVisibleCrop() {
   const video = elements.camera;
   const vw = video.videoWidth || modelInputWidth;
@@ -356,7 +377,6 @@ function drawFrameTensor() {
   canvas.height = targetH;
   const context = canvas.getContext("2d", { willReadFrequently: true });
 
-  // Standard Ultralytics YOLO neutral gray letterbox padding
   context.fillStyle = "rgb(114, 114, 114)";
   context.fillRect(0, 0, targetW, targetH);
 
@@ -367,7 +387,13 @@ function drawFrameTensor() {
   const left = (targetW - width) / 2;
   const top = (targetH - height) / 2;
 
+  context.save();
+  if (isFrontCamera) {
+    context.translate(targetW, 0);
+    context.scale(-1, 1);
+  }
   context.drawImage(elements.camera, sx, sy, sw, sh, left, top, width, height);
+  context.restore();
 
   const pixels = context.getImageData(0, 0, targetW, targetH).data;
   const planeSize = targetW * targetH;
@@ -385,15 +411,21 @@ function drawFrameTensor() {
 }
 
 function denominationText(key) {
-  const normalized = String(key || "").trim();
+  const normalized = String(key || "").trim().toLowerCase();
   const names = {
     "coin_005": "₱0.05 — Five Centavos",
+    "0.05": "₱0.05 — Five Centavos",
     "coin_025": "₱0.25 — Twenty-Five Centavos",
+    "0.25": "₱0.25 — Twenty-Five Centavos",
     "coin_1": "₱1 — One Peso",
+    "1": "₱1 — One Peso",
     "coin_5": "₱5 — Five Pesos",
+    "5": "₱5 — Five Pesos",
     "coin_10": "₱10 — Ten Pesos",
+    "10": "₱10 — Ten Pesos",
     "20": "₱20 — Twenty Pesos",
     "bill_20": "₱20 — Twenty Pesos",
+    "coin_20": "₱20 — Twenty Pesos",
     "50": "₱50 — Fifty Pesos",
     "bill_50": "₱50 — Fifty Pesos",
     "100": "₱100 — One Hundred Pesos",
@@ -405,7 +437,7 @@ function denominationText(key) {
     "1000": "₱1,000 — One Thousand Pesos",
     "bill_1000": "₱1,000 — One Thousand Pesos"
   };
-  return names[normalized] || normalized.replace(/_/g, " ");
+  return names[normalized] || String(key || "").replace(/_/g, " ");
 }
 
 function sigmoid(value) {
@@ -433,9 +465,9 @@ function postprocess(output, letterbox) {
   const data = output.data;
   const shape = Array.from(output.dims);
   const prob = value => (value >= 0 && value <= 1 ? value : sigmoid(value));
-  const numClasses = labelList.length || 11;
+  const numClasses = labelList.length;
 
-  // 1. YOLO26 / End-to-End OBB format: [1, 300, 7] -> [cx, cy, w, h, score, class_id, angle]
+  // 1. End-to-End OBB format: [1, 300, 7] -> [cx, cy, w, h, score, class_id, angle]
   if (shape.length === 3 && shape[2] === 7) {
     const detections = shape[1];
     let best = null;
@@ -453,13 +485,13 @@ function postprocess(output, letterbox) {
         letterbox
       );
       if (!best || score > best.score) {
-        best = { index, score, obb };
+        best = { index, score, obb, shape };
       }
     }
-    return best || { index: -1, score: 0, obb: null };
+    return best || { index: -1, score: 0, obb: null, shape };
   }
 
-  // 2. Standard End-to-End Detection format: [1, 300, 6] -> [x1, y1, x2, y2, score, class_id]
+  // 2. End-to-End Detection format: [1, 300, 6] -> [x1, y1, x2, y2, score, class_id]
   if (shape.length === 3 && shape[2] === 6) {
     const detections = shape[1];
     let best = null;
@@ -474,10 +506,10 @@ function postprocess(output, letterbox) {
       const hRaw = Math.abs(data[base + 3] - data[base + 1]);
       const obb = mapObbToVideo(cxRaw, cyRaw, wRaw, hRaw, 0, letterbox);
       if (!best || score > best.score) {
-        best = { index, score, obb };
+        best = { index, score, obb, shape };
       }
     }
-    return best || { index: -1, score: 0, obb: null };
+    return best || { index: -1, score: 0, obb: null, shape };
   }
 
   // 3. Raw YOLO OBB [1, 4+C+1, anchors] or Detect [1, 4+C, anchors]
@@ -487,8 +519,12 @@ function postprocess(output, letterbox) {
     const channelsFirst = first < second;
     const detections = channelsFirst ? second : first;
     const stride = channelsFirst ? first : second;
-    const isObb = stride === 4 + numClasses + 1;
-    const activeClasses = isObb ? numClasses : Math.max(1, stride - 4);
+    const isObb = numClasses > 0
+      ? stride === 4 + numClasses + 1
+      : stride > 5;
+    const activeClasses = numClasses > 0
+      ? Math.min(numClasses, stride - 4)
+      : Math.max(1, stride - (isObb ? 5 : 4));
     let best = null;
 
     if (channelsFirst) {
@@ -512,7 +548,7 @@ function postprocess(output, letterbox) {
             angle,
             letterbox
           );
-          best = { index: topClass, score: topScore, obb };
+          best = { index: topClass, score: topScore, obb, shape };
         }
       }
     } else {
@@ -537,15 +573,15 @@ function postprocess(output, letterbox) {
             angle,
             letterbox
           );
-          best = { index: topClass, score: topScore, obb };
+          best = { index: topClass, score: topScore, obb, shape };
         }
       }
     }
 
-    return best || { index: -1, score: 0, obb: null };
+    return best || { index: -1, score: 0, obb: null, shape };
   }
 
-  return { index: -1, score: 0, obb: null };
+  return { index: -1, score: 0, obb: null, shape };
 }
 
 async function runInferenceWithAutoResize() {
@@ -637,11 +673,20 @@ async function scanMoney() {
   try {
     const best = await runInferenceWithAutoResize();
     const percent = Math.round(best.score * 100);
-    const key = best.index >= 0 ? (labelList[best.index] || "") : "";
+    const key = best.index >= 0 ? (labelList[best.index] || `class_${best.index}`) : "";
     const displayText = denominationText(key);
 
-    if (percent >= 50 && key) {
-      const speechText = speechMap[key] || displayText;
+    console.log("Scan debug:", {
+      shape: best.shape,
+      index: best.index,
+      score: best.score,
+      percent,
+      matchedKey: key,
+      labelList
+    });
+
+    if (percent >= CONFIDENCE_THRESHOLD && best.index >= 0) {
+      const speechText = speechMap[key] || speechMap[String(key).toLowerCase()] || displayText;
       drawOrientedBox(best.obb, `${displayText} (${percent}%)`);
       updateResultUI({
         state: "success",
