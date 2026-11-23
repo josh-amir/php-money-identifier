@@ -18,7 +18,9 @@ const elements = {
   confidence: document.getElementById("confidence"),
   confidenceFill: document.getElementById("confidenceFill"),
   scan: document.getElementById("scanButton"),
-  repeat: document.getElementById("repeatButton")
+  repeat: document.getElementById("repeatButton"),
+  systemStateText: document.getElementById("systemStateText"),
+  cameraPlaceholder: document.getElementById("cameraPlaceholder")
 };
 
 let audioContext = null;
@@ -40,6 +42,8 @@ let serialReader = null;
 let systemStarting = false;
 let cameraPositioningOnly = false;
 let isFrontCamera = false;
+let cameraSwipeStartX = null;
+let cameraSwipeStartY = null;
 
 function ensureAudioContext() {
   if (!audioContext) {
@@ -108,6 +112,12 @@ function updateResultUI({ state = "idle", badge = "SYSTEM READY", title = "Ready
   elements.confidence.textContent = confidenceText;
   elements.confidence.setAttribute("aria-label", confidenceText);
   elements.confidenceFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  if (elements.systemStateText) {
+    elements.systemStateText.textContent =
+      state === "success" ? "Result found" :
+      state === "warn" ? "Needs attention" :
+      percent > 0 ? "Scanning" : "Ready";
+  }
 }
 
 function clearBoundingBox() {
@@ -247,15 +257,17 @@ async function refreshCameras() {
 }
 
 function updateUtilityLayout() {
-  const visibleControls = Array.from(document.querySelectorAll(".utility-button"))
-    .filter(button => !button.hidden).length;
-  document.querySelector(".utility-bar").style.gridTemplateColumns =
-    `repeat(${Math.max(visibleControls, 1)}, minmax(0, 1fr))`;
+  // Layout is controlled by responsive CSS so the app brand is preserved
+  // alongside any optional utility buttons.
 }
 
 async function startCamera(deviceId) {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("Camera unavailable. Open over HTTPS or localhost.");
+  }
+  elements.camera.classList.remove("is-ready");
+  if (elements.cameraPlaceholder) {
+    elements.cameraPlaceholder.classList.remove("is-hidden");
   }
 
   if (cameraStream) {
@@ -294,6 +306,8 @@ async function startCamera(deviceId) {
 
   elements.camera.style.transform = isFrontCamera ? "scaleX(-1)" : "none";
   await elements.camera.play();
+  elements.camera.classList.add("is-ready");
+  if (elements.cameraPlaceholder) elements.cameraPlaceholder.classList.add("is-hidden");
   await refreshCameras();
 
   updateResultUI({
@@ -310,6 +324,10 @@ async function switchCamera() {
   if (cameras.length < 2) return;
   cameraIndex = (cameraIndex + 1) % cameras.length;
   clearBoundingBox();
+  const cameraStage = elements.camera.closest(".camera-stage");
+  cameraStage.classList.remove("camera-swipe-in");
+  void cameraStage.offsetWidth;
+  cameraStage.classList.add("camera-swipe-in");
   await startCamera(cameras[cameraIndex].deviceId);
   speak("Camera switched.");
 }
@@ -602,7 +620,7 @@ async function scanMoney() {
         state: "warn",
         badge: "MODEL ERROR",
         title: "Model Unavailable",
-        confidenceText: "Check model/moneyphpbest.onnx",
+        confidenceText: "Check model/best.onnx",
         percent: 0
       });
       speak("Model unavailable. Please check the model files.");
@@ -611,6 +629,9 @@ async function scanMoney() {
   }
 
   scanning = true;
+  document.body.classList.add("is-scanning");
+  const scanSub = elements.scan.querySelector(".btn-sub");
+  if (scanSub) scanSub.textContent = "Analyzing...";
   scanStartedFeedback();
 
   try {
@@ -662,6 +683,9 @@ async function scanMoney() {
     speak("Scan failed. Please try again.");
   } finally {
     scanning = false;
+    document.body.classList.remove("is-scanning");
+    const scanSub = elements.scan.querySelector(".btn-sub");
+    if (scanSub) scanSub.textContent = "Press Space";
   }
 }
 
@@ -685,7 +709,8 @@ function enableAutoScan() {
   autoScanEnabled = true;
   elements.auto.setAttribute("aria-pressed", "true");
   elements.auto.setAttribute("aria-label", "Auto-scan on");
-  elements.auto.textContent = "Auto-Scan: ON";
+  const state = elements.auto.querySelector("strong");
+  if (state) state.textContent = "ON";
   startAutoScan();
   speak("Camera ready. Auto-scan on.");
 }
@@ -694,7 +719,8 @@ function toggleAutoScan() {
   autoScanEnabled = !autoScanEnabled;
   elements.auto.setAttribute("aria-pressed", String(autoScanEnabled));
   elements.auto.setAttribute("aria-label", `Auto-scan ${autoScanEnabled ? "on" : "off"}`);
-  elements.auto.textContent = `Auto-Scan: ${autoScanEnabled ? "ON" : "OFF"}`;
+  const state = elements.auto.querySelector("strong");
+  if (state) state.textContent = autoScanEnabled ? "ON" : "OFF";
   if (autoScanEnabled) {
     startAutoScan();
     speak("Auto-scan on.");
@@ -714,7 +740,8 @@ async function connectArduino() {
   try {
     serialPort = await navigator.serial.requestPort();
     await serialPort.open({ baudRate: 9600 });
-    elements.arduino.textContent = "Arduino: Connected";
+    const label = elements.arduino.querySelector("span:not(.control-icon)");
+    if (label) label.textContent = "Arduino connected";
     elements.arduino.setAttribute("aria-pressed", "true");
     elements.arduino.setAttribute("aria-label", "Arduino connected");
     speak("Arduino connected.");
@@ -759,6 +786,7 @@ async function startSystem() {
   if (systemStarting) return;
   systemStarting = true;
   ensureAudioContext();
+  document.body.classList.add("is-started");
   elements.overlay.hidden = true;
   speak("System ready. Tap Scan Money or press Spacebar to identify currency. Tap Repeat Audio or press R to repeat.");
 
@@ -770,10 +798,26 @@ async function startSystem() {
       state: "warn",
       badge: "MODEL ERROR",
       title: "Model Unavailable",
-      confidenceText: "Check model/moneyphpbest.onnx",
+      confidenceText: "Check model/best.onnx",
       percent: 0
     });
     speak("Model unavailable. Please check the model files.");
+  }
+
+  try {
+    await startCamera();
+  } catch (error) {
+    console.error(error);
+    const message = error.name === "NotAllowedError"
+      ? "Camera permission denied. Allow camera access, then tap Scan."
+      : "Camera unavailable. Tap Scan to try again.";
+    updateResultUI({
+      state: "warn",
+      badge: "CAMERA NEEDED",
+      title: "Camera Unavailable",
+      confidenceText: message,
+      percent: 0
+    });
   }
 
   systemStarting = false;
@@ -788,6 +832,23 @@ elements.repeat.addEventListener("click", repeatAudio);
 elements.auto.addEventListener("click", toggleAutoScan);
 elements.switchCamera.addEventListener("click", switchCamera);
 elements.arduino.addEventListener("click", connectArduino);
+
+function addPressRipple(button) {
+  button.addEventListener("pointerdown", event => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const rect = button.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    ripple.className = "press-ripple";
+    ripple.style.left = `${event.clientX - rect.left}px`;
+    ripple.style.top = `${event.clientY - rect.top}px`;
+    button.appendChild(ripple);
+    window.setTimeout(() => ripple.remove(), 650);
+  });
+}
+
+addPressRipple(elements.scan);
+addPressRipple(elements.repeat);
+addPressRipple(elements.start);
 
 document.addEventListener("keydown", event => {
   if (event.repeat) return;
@@ -807,8 +868,41 @@ if ("serial" in navigator) {
 updateUtilityLayout();
 window.addEventListener("resize", clearBoundingBox);
 
+elements.camera.addEventListener("pointerdown", event => {
+  cameraSwipeStartX = event.clientX;
+  cameraSwipeStartY = event.clientY;
+});
+
+elements.camera.addEventListener("pointerup", event => {
+  if (cameraSwipeStartX === null) return;
+  const deltaX = event.clientX - cameraSwipeStartX;
+  const deltaY = event.clientY - cameraSwipeStartY;
+  cameraSwipeStartX = null;
+  cameraSwipeStartY = null;
+
+  if (Math.abs(deltaX) > 56 && Math.abs(deltaX) > Math.abs(deltaY) * 1.35) {
+    if (cameras.length > 1) {
+      switchCamera();
+    }
+  }
+});
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(error => console.error(error));
   });
 }
+
+function updateConnectionState() {
+  if (!elements.systemStateText) return;
+  elements.systemStateText.textContent = navigator.onLine ? "Ready" : "Offline";
+  if (!navigator.onLine) {
+    elements.systemStateText.closest(".system-state")?.setAttribute("aria-label", "App is offline");
+  } else {
+    elements.systemStateText.closest(".system-state")?.setAttribute("aria-label", "App is ready");
+  }
+}
+
+window.addEventListener("online", updateConnectionState);
+window.addEventListener("offline", updateConnectionState);
+updateConnectionState();

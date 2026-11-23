@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#05122b">
+  <meta name="theme-color" content="#08162f">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Accessible Philippine money identifier. Point your camera at a banknote and hear the denomination read aloud.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Money ID">
-  <title>₱1000 Accessible Money Identifier</title>
+  <title>PHP Money Identifier</title>
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -36,27 +36,72 @@
   <!-- Full-Screen Start Trigger -->
   <div id="startOverlay" class="start-overlay" role="dialog" aria-modal="true"
        aria-labelledby="startTitle" aria-describedby="startSub">
-    <button id="startButton" class="start-button" type="button" autofocus
-            aria-label="Tap anywhere to start the money identifier. Philippine currency reader for the one thousand peso banknote. Voice guidance and the camera will turn on.">
-      <span class="banknote-tag">PHILIPPINE CURRENCY READER • ₱1000</span>
-      <span id="startTitle" class="start-title">TAP ANYWHERE TO START</span>
-      <span id="startSub" class="start-sub">Voice guidance and camera will turn on</span>
-    </button>
+    <div class="opening-backdrop" aria-hidden="true">
+      <span class="orb orb-one"></span>
+      <span class="orb orb-two"></span>
+      <span class="grid-glow"></span>
+    </div>
+    <div class="opening-shell">
+      <div class="opening-brand">
+        <img src="icon.png" alt="" width="44" height="44">
+        <div>
+          <span>PHP</span>
+          <strong>Money Identifier</strong>
+        </div>
+      </div>
+
+      <div class="opening-visual" aria-hidden="true">
+        <div class="banknote-shadow"></div>
+        <div class="banknote-card">
+          <div class="banknote-mark">₱</div>
+          <div class="banknote-lines">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+
+      <button id="startButton" class="start-button" type="button" autofocus
+              aria-label="Start the money identifier. Voice guidance and the camera will turn on.">
+        <span class="opening-kicker"><i></i> PHILIPPINE CURRENCY READER</span>
+        <span id="startTitle" class="start-title">Point. Scan. Know.</span>
+        <span id="startSub" class="start-sub">Tap to enable your camera and start</span>
+        <span class="start-action" aria-hidden="true">
+          <span>Start identifying</span>
+          <b>→</b>
+        </span>
+      </button>
+    </div>
   </div>
 
   <!-- Large Top Controls -->
   <header class="utility-bar" aria-label="System controls">
+    <div class="app-brand" aria-label="PHP Money Identifier">
+      <img src="icon.png" alt="" width="38" height="38">
+      <div>
+        <span>PHP</span>
+        <strong>Money ID</strong>
+      </div>
+    </div>
+    <div class="system-state" aria-live="polite">
+      <i></i>
+      <span id="systemStateText">Ready</span>
+    </div>
     <button id="autoScanButton" class="utility-button" type="button"
             aria-pressed="false" aria-label="Auto-scan off">
-      AUTO-SCAN: OFF
+      <span class="control-dot"></span>
+      <span>Auto-scan</span>
+      <strong>OFF</strong>
     </button>
     <button id="switchCameraButton" class="utility-button" type="button"
             aria-label="Switch camera" hidden>
-      SWITCH CAMERA
+      <span class="control-icon" aria-hidden="true">↻</span>
+      <span>Switch camera</span>
     </button>
     <button id="arduinoButton" class="utility-button" type="button"
             aria-label="Connect Arduino" hidden>
-      CONNECT ARDUINO
+      <span class="control-icon" aria-hidden="true">⌁</span>
+      <span>Connect Arduino</span>
     </button>
   </header>
 
@@ -65,6 +110,9 @@
         aria-label="Money identification controls">
     <!-- 1. Giant Centered Result & Confidence Readout -->
     <section id="resultPanel" class="result-panel" data-state="idle" aria-label="Scan result">
+      <div class="result-orb" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18M16.5 6.5c0-1.4-1.3-2.5-4.5-2.5S7.5 5.1 7.5 6.5 8.8 9 12 9s4.5 1.1 4.5 2.5S15.2 14 12 14s-4.5-1.1-4.5-2.5"/></svg>
+      </div>
       <p id="statusBadge" class="status-badge" role="status">READY TO SCAN</p>
       <p id="denomination" class="denomination-title" role="alert" aria-atomic="true">TAP SCAN MONEY</p>
       <p id="confidence" class="confidence-text">CONFIDENCE: --</p>
@@ -78,6 +126,17 @@
       <section class="camera-stage" aria-label="Camera viewfinder">
         <video id="camera" autoplay playsinline muted aria-label="Live camera preview"></video>
         <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+        <div id="cameraPlaceholder" class="camera-placeholder" aria-hidden="true">
+          <span class="camera-placeholder-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M7 12h10"/></svg>
+          </span>
+          <span>Camera starting</span>
+        </div>
+        <div class="camera-topline" aria-hidden="true">
+          <span><i></i> LIVE VIEW</span>
+          <b>₱ PHP</b>
+        </div>
+        <div class="frame-corners" aria-hidden="true"></div>
         <p class="sr-only">
           Point the back camera at the banknote so it fills the frame, then press
           Scan Money or the spacebar to identify the bill.
@@ -89,13 +148,24 @@
     <section class="action-deck" aria-label="Primary actions">
       <button id="scanButton" class="scan-button" type="button"
               aria-keyshortcuts="Space" aria-label="Scan money. Shortcut: Spacebar">
-        <span class="btn-main">SCAN MONEY</span>
-        <span class="btn-sub">SPACEBAR</span>
+        <span class="action-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 12h8"/></svg>
+        </span>
+        <span class="action-copy">
+          <span class="btn-main">Scan money</span>
+          <span class="btn-sub">Press Space</span>
+        </span>
+        <span class="scan-progress" aria-hidden="true"></span>
       </button>
       <button id="repeatButton" class="repeat-button" type="button"
               aria-keyshortcuts="R" aria-label="Repeat last result. Shortcut: R">
-        <span class="btn-main">REPEAT AUDIO</span>
-        <span class="btn-sub">PRESS R</span>
+        <span class="action-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/></svg>
+        </span>
+        <span class="action-copy">
+          <span class="btn-main">Repeat audio</span>
+          <span class="btn-sub">Press R</span>
+        </span>
       </button>
     </section>
   </main>

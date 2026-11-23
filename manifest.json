@@ -4,9 +4,9 @@
   "description": "AI-powered Philippine currency reader with voice and haptic feedback for visually impaired users.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#090d16",
-  "orientation": "portrait-primary",
+  "background_color": "#07182f",
+  "theme_color": "#08162f",
+  "orientation": "any",
   "icons": [
     {
       "src": "icon.png",

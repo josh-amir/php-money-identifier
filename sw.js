@@ -8,7 +8,7 @@
    • Navigations fall back to ./index.html, then an offline page
    ========================================================= */
 
-const CACHE_VERSION = "v11";
+const CACHE_VERSION = "v13";
 const CACHE_NAME = `accessible-money-id-${CACHE_VERSION}`;
 
 /* Must exist for the app to boot offline. */
@@ -23,7 +23,7 @@ const CORE_ASSETS = [
 
 /* Nice to have — failures here must never block installation. */
 const OPTIONAL_ASSETS = [
-  "./model/moneyphpbest.onnx",
+  "./model/best.onnx",
   "./model/labels.json",
   "./model/speech.json",
   "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"
